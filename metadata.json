@@ -1,0 +1,6 @@
+{
+  "name": "Điểm Danh Sinh Viên Cao Đẳng",
+  "description": "Ứng dụng quản lý điểm danh và thông tin cá nhân dành cho Sinh viên hệ Cao đẳng",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
