@@ -17,6 +17,12 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     val studentProfile: StateFlow<StudentProfile?>
     val subjects: StateFlow<List<Subject>>
     val records: StateFlow<List<AttendanceRecord>>
+    val classStudents: StateFlow<List<ClassStudent>>
+    val qrSessions: StateFlow<List<QrAttendanceSession>>
+    val activeSession: StateFlow<QrAttendanceSession?>
+
+    private val _userRole = MutableStateFlow(UserRole.STUDENT)
+    val userRole: StateFlow<UserRole> = _userRole.asStateFlow()
 
     // Filter for History screen
     private val _selectedFilterStatus = MutableStateFlow<AttendanceStatus?>(null)
@@ -32,7 +38,9 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
         repository = AttendanceRepository(
             database.studentDao(),
             database.subjectDao(),
-            database.attendanceRecordDao()
+            database.attendanceRecordDao(),
+            database.classStudentDao(),
+            database.qrSessionDao()
         )
 
         studentProfile = repository.studentProfile.stateIn(
@@ -53,6 +61,24 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             initialValue = emptyList()
         )
 
+        classStudents = repository.allClassStudents.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+        qrSessions = repository.allSessions.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+        activeSession = repository.activeSession.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
         filteredRecords = combine(records, _selectedFilterStatus, _selectedFilterSubjectId) { recList, status, subId ->
             recList.filter { record ->
                 (status == null || record.status == status) &&
@@ -63,6 +89,10 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+    }
+
+    fun setUserRole(role: UserRole) {
+        _userRole.value = role
     }
 
     fun setFilterStatus(status: AttendanceStatus?) {
@@ -111,7 +141,9 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
         subject: Subject,
         status: AttendanceStatus,
         location: String,
-        note: String
+        note: String,
+        studentId: String = studentProfile.value?.studentId ?: "CD21-TH0128",
+        studentName: String = studentProfile.value?.fullName ?: "Nguyễn Văn An"
     ) {
         viewModelScope.launch {
             val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
@@ -119,6 +151,8 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             val now = Date()
 
             repository.recordAttendance(
+                studentId = studentId,
+                studentName = studentName,
                 subjectId = subject.id,
                 subjectName = subject.name,
                 subjectCode = subject.code,
@@ -126,8 +160,66 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                 date = dateFormat.format(now),
                 time = timeFormat.format(now),
                 location = location.ifBlank { "Phòng ${subject.room} - Wi-Fi KGC_Campus" },
-                note = note.ifBlank { "Đã điểm danh sinh viên thành công" }
+                note = note.ifBlank { "Đã điểm danh sinh viên qua mã QR" }
             )
+        }
+    }
+
+    fun addNewClassStudent(
+        studentId: String,
+        fullName: String,
+        className: String,
+        phone: String,
+        email: String
+    ) {
+        viewModelScope.launch {
+            repository.addClassStudent(
+                ClassStudent(
+                    studentId = studentId,
+                    fullName = fullName,
+                    className = className.ifBlank { "CĐ21-TH01" },
+                    phone = phone,
+                    email = email
+                )
+            )
+        }
+    }
+
+    fun deleteClassStudent(id: Long) {
+        viewModelScope.launch {
+            repository.deleteClassStudent(id)
+        }
+    }
+
+    fun createQrSession(
+        subject: Subject,
+        sessionTitle: String
+    ) {
+        viewModelScope.launch {
+            val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+            val timeFormat = SimpleDateFormat("HH:mm a", Locale.getDefault())
+            val now = Date()
+            val qrToken = "KGC_${subject.code}_${System.currentTimeMillis()}"
+
+            repository.createQrSession(
+                QrAttendanceSession(
+                    subjectId = subject.id,
+                    subjectCode = subject.code,
+                    subjectName = subject.name,
+                    sessionTitle = sessionTitle.ifBlank { "Điểm Danh Buổi Học - ${subject.name}" },
+                    room = subject.room,
+                    date = dateFormat.format(now),
+                    createdTime = timeFormat.format(now),
+                    qrToken = qrToken,
+                    isActive = true
+                )
+            )
+        }
+    }
+
+    fun closeQrSession(id: Long) {
+        viewModelScope.launch {
+            repository.closeQrSession(id)
         }
     }
 

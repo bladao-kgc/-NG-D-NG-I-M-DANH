@@ -22,11 +22,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.AttendanceStatus
+import com.example.data.Subject
+import com.example.data.UserRole
 import com.example.ui.AttendanceViewModel
 import com.example.ui.screens.CheckInScreen
 import com.example.ui.screens.HistoryScreen
 import com.example.ui.screens.ProfileScreen
 import com.example.ui.screens.SubjectsScreen
+import com.example.ui.screens.TeacherScreen
 import com.example.ui.theme.MyApplicationTheme
 
 enum class NavigationTab(
@@ -46,6 +50,12 @@ enum class NavigationTab(
         selectedIcon = Icons.Filled.HowToReg,
         unselectedIcon = Icons.Outlined.HowToReg,
         testTag = "tab_checkin"
+    ),
+    TEACHER(
+        title = "Giáo Viên",
+        selectedIcon = Icons.Filled.SupervisorAccount,
+        unselectedIcon = Icons.Outlined.SupervisorAccount,
+        testTag = "tab_teacher"
     ),
     SUBJECTS(
         title = "Môn Học",
@@ -81,6 +91,10 @@ class MainActivity : ComponentActivity() {
                 val selectedStatus by viewModel.selectedFilterStatus.collectAsStateWithLifecycle()
                 val selectedSubjectId by viewModel.selectedFilterSubjectId.collectAsStateWithLifecycle()
 
+                val userRole by viewModel.userRole.collectAsStateWithLifecycle()
+                val classStudents by viewModel.classStudents.collectAsStateWithLifecycle()
+                val activeSession by viewModel.activeSession.collectAsStateWithLifecycle()
+
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     topBar = {
@@ -88,7 +102,7 @@ class MainActivity : ComponentActivity() {
                             title = {
                                 Column {
                                     Text(
-                                        text = "Điểm Danh Sinh Viên Cao Đẳng",
+                                        text = if (userRole == UserRole.TEACHER) "Quản Lý Điểm Danh - Giảng Viên" else "Điểm Danh Sinh Viên Cao Đẳng",
                                         fontSize = 17.sp,
                                         fontWeight = FontWeight.Bold
                                     )
@@ -101,15 +115,15 @@ class MainActivity : ComponentActivity() {
                             },
                             actions = {
                                 Surface(
-                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    color = if (userRole == UserRole.TEACHER) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.primaryContainer,
                                     shape = MaterialTheme.shapes.small,
                                     modifier = Modifier.padding(end = 12.dp)
                                 ) {
                                     Text(
-                                        text = studentProfile?.className ?: "CĐ-K21",
+                                        text = userRole.displayName,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        color = if (userRole == UserRole.TEACHER) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onPrimaryContainer,
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                     )
                                 }
@@ -159,6 +173,8 @@ class MainActivity : ComponentActivity() {
                             NavigationTab.PROFILE -> ProfileScreen(
                                 profile = studentProfile,
                                 subjects = subjects,
+                                userRole = userRole,
+                                onRoleChange = viewModel::setUserRole,
                                 onUpdateProfile = viewModel::updateProfile,
                                 modifier = paddingModifier
                             )
@@ -166,7 +182,30 @@ class MainActivity : ComponentActivity() {
                                 profile = studentProfile,
                                 subjects = subjects,
                                 recentRecords = records,
+                                activeSession = activeSession,
+                                classStudents = classStudents,
                                 onCheckInSubmit = viewModel::performCheckIn,
+                                modifier = paddingModifier
+                            )
+                            NavigationTab.TEACHER -> TeacherScreen(
+                                classStudents = classStudents,
+                                subjects = subjects,
+                                records = records,
+                                activeSession = activeSession,
+                                onAddStudent = viewModel::addNewClassStudent,
+                                onDeleteStudent = viewModel::deleteClassStudent,
+                                onCreateQrSession = viewModel::createQrSession,
+                                onCloseQrSession = viewModel::closeQrSession,
+                                onManualCheckIn = { sub, sId, sName, status ->
+                                    viewModel.performCheckIn(
+                                        subject = sub,
+                                        status = status,
+                                        location = "Điểm Danh Trực Tiếp Bởi Giảng Viên",
+                                        note = "Giảng viên cập nhật thủ công",
+                                        studentId = sId,
+                                        studentName = sName
+                                    )
+                                },
                                 modifier = paddingModifier
                             )
                             NavigationTab.SUBJECTS -> SubjectsScreen(

@@ -6,11 +6,16 @@ import kotlinx.coroutines.flow.Flow
 class AttendanceRepository(
     private val studentDao: StudentDao,
     private val subjectDao: SubjectDao,
-    private val recordDao: AttendanceRecordDao
+    private val recordDao: AttendanceRecordDao,
+    private val classStudentDao: ClassStudentDao,
+    private val qrSessionDao: QrSessionDao
 ) {
     val studentProfile: Flow<StudentProfile?> = studentDao.getStudentProfile()
     val allSubjects: Flow<List<Subject>> = subjectDao.getAllSubjects()
     val allRecords: Flow<List<AttendanceRecord>> = recordDao.getAllRecords()
+    val allClassStudents: Flow<List<ClassStudent>> = classStudentDao.getAllClassStudents()
+    val allSessions: Flow<List<QrAttendanceSession>> = qrSessionDao.getAllSessions()
+    val activeSession: Flow<QrAttendanceSession?> = qrSessionDao.getActiveSession()
 
     suspend fun updateStudentProfile(profile: StudentProfile) {
         studentDao.insertOrUpdateProfile(profile)
@@ -28,7 +33,25 @@ class AttendanceRepository(
         subjectDao.deleteSubjectById(id)
     }
 
+    suspend fun addClassStudent(student: ClassStudent) {
+        classStudentDao.insertStudent(student)
+    }
+
+    suspend fun deleteClassStudent(id: Long) {
+        classStudentDao.deleteStudentById(id)
+    }
+
+    suspend fun createQrSession(session: QrAttendanceSession): Long {
+        return qrSessionDao.insertSession(session)
+    }
+
+    suspend fun closeQrSession(id: Long) {
+        qrSessionDao.closeSession(id)
+    }
+
     suspend fun recordAttendance(
+        studentId: String = "CD21-TH0128",
+        studentName: String = "Nguyễn Văn An",
         subjectId: Long,
         subjectName: String,
         subjectCode: String,
@@ -40,6 +63,8 @@ class AttendanceRepository(
     ) {
         // Create Record
         val record = AttendanceRecord(
+            studentId = studentId,
+            studentName = studentName,
             subjectId = subjectId,
             subjectName = subjectName,
             subjectCode = subjectCode,

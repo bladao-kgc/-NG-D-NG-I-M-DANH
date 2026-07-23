@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,15 +20,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.AttendanceRecord
 import com.example.data.AttendanceStatus
+import com.example.data.ClassStudent
+import com.example.data.QrAttendanceSession
 import com.example.data.StudentProfile
 import com.example.data.Subject
 import com.example.ui.components.CheckInDialog
+import com.example.ui.components.QrScannerSimulationDialog
 
 @Composable
 fun CheckInScreen(
     profile: StudentProfile?,
     subjects: List<Subject>,
     recentRecords: List<AttendanceRecord>,
+    activeSession: QrAttendanceSession?,
+    classStudents: List<ClassStudent>,
     onCheckInSubmit: (
         subject: Subject,
         status: AttendanceStatus,
@@ -37,6 +43,7 @@ fun CheckInScreen(
     modifier: Modifier = Modifier
 ) {
     var selectedSubjectForCheckIn by remember { mutableStateOf<Subject?>(null) }
+    var showQrScannerDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = modifier
@@ -77,7 +84,7 @@ fun CheckInScreen(
                             color = Color.White
                         )
                         Text(
-                            text = "Lớp: ${profile?.className ?: "Cao Đẳng"} • Chọn môn bên dưới để điểm danh",
+                            text = "Lớp: ${profile?.className ?: "Cao Đẳng"} • Chọn môn hoặc quét QR bên dưới",
                             fontSize = 12.sp,
                             color = Color.White.copy(alpha = 0.8f)
                         )
@@ -89,6 +96,104 @@ fun CheckInScreen(
                         tint = Color.White,
                         modifier = Modifier.size(44.dp)
                     )
+                }
+            }
+        }
+
+        // Active Teacher QR Banner
+        item {
+            if (activeSession != null) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showQrScannerDialog = true },
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Surface(
+                            color = Color(0xFF2E7D32),
+                            shape = CircleShape,
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.QrCodeScanner,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "MÃ QR ĐIỂM DANH ĐANG MỞ",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1B5E20)
+                            )
+                            Text(
+                                text = "${activeSession.subjectCode} - ${activeSession.sessionTitle}",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF2E7D32)
+                            )
+                            Text(
+                                text = "Phòng: ${activeSession.room} • Chạm để quét ngay",
+                                fontSize = 12.sp,
+                                color = Color(0xFF388E3C)
+                            )
+                        }
+
+                        Button(
+                            onClick = { showQrScannerDialog = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Quét Mã", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            } else {
+                OutlinedCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showQrScannerDialog = true },
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.QrCodeScanner,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Quét Mã QR Lớp Học Trực Tiếp",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Quét mã QR từ màn hình Giảng viên để điểm danh",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        TextButton(onClick = { showQrScannerDialog = true }) {
+                            Text("Mở Camera Quét")
+                        }
+                    }
                 }
             }
         }
@@ -147,6 +252,17 @@ fun CheckInScreen(
             onDismiss = { selectedSubjectForCheckIn = null },
             onConfirm = { status, loc, note ->
                 onCheckInSubmit(subject, status, loc, note)
+            }
+        )
+    }
+
+    if (showQrScannerDialog) {
+        QrScannerSimulationDialog(
+            activeSession = activeSession,
+            subjects = subjects,
+            onDismiss = { showQrScannerDialog = false },
+            onSuccess = { sub, status, loc, note ->
+                onCheckInSubmit(sub, status, loc, note)
             }
         )
     }

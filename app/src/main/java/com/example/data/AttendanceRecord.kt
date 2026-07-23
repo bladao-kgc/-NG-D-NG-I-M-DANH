@@ -13,6 +13,8 @@ enum class AttendanceStatus(val displayName: String, val colorHex: Long) {
 @Entity(tableName = "attendance_records")
 data class AttendanceRecord(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val studentId: String = "CD21-TH0128",
+    val studentName: String = "Nguyễn Văn An",
     val subjectId: Long,
     val subjectName: String,
     val subjectCode: String,

@@ -50,3 +50,36 @@ interface AttendanceRecordDao {
     @Query("SELECT COUNT(*) FROM attendance_records WHERE status = :status")
     fun countByStatus(status: AttendanceStatus): Flow<Int>
 }
+
+@Dao
+interface ClassStudentDao {
+    @Query("SELECT * FROM class_students ORDER BY fullName ASC")
+    fun getAllClassStudents(): Flow<List<ClassStudent>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertStudent(student: ClassStudent): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(students: List<ClassStudent>)
+
+    @Query("DELETE FROM class_students WHERE id = :id")
+    suspend fun deleteStudentById(id: Long)
+
+    @Query("SELECT * FROM class_students WHERE studentId = :studentId LIMIT 1")
+    suspend fun getStudentByStudentId(studentId: String): ClassStudent?
+}
+
+@Dao
+interface QrSessionDao {
+    @Query("SELECT * FROM qr_sessions ORDER BY id DESC")
+    fun getAllSessions(): Flow<List<QrAttendanceSession>>
+
+    @Query("SELECT * FROM qr_sessions WHERE isActive = 1 ORDER BY id DESC LIMIT 1")
+    fun getActiveSession(): Flow<QrAttendanceSession?>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSession(session: QrAttendanceSession): Long
+
+    @Query("UPDATE qr_sessions SET isActive = 0 WHERE id = :id")
+    suspend fun closeSession(id: Long)
+}
